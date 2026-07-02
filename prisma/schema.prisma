@@ -1,0 +1,233 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EstadoUsuario {
+  ACTIVO
+  INACTIVO
+}
+
+enum EstadoPrestamo {
+  ACTIVO
+  DEVUELTO
+  ATRASADO
+  CANCELADO
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  APROBADA
+  CANCELADA
+}
+
+enum EstadoPago {
+  PENDIENTE
+  PAGADO
+}
+
+model Rol {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique
+  descripcion String?
+
+  usuarios    Usuario[]
+  permisos    RolPermiso[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Permiso {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique
+  descripcion String?
+
+  roles       RolPermiso[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RolPermiso {
+  id        Int @id @default(autoincrement())
+  rolId     Int
+  permisoId Int
+
+  rol       Rol     @relation(fields: [rolId], references: [id])
+  permiso   Permiso @relation(fields: [permisoId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([rolId, permisoId])
+}
+
+model TipoUsuario {
+  id           Int     @id @default(autoincrement())
+  nombre       String  @unique
+  descripcion  String?
+  descuento    Float   @default(0)
+  diasPrestamo Int     @default(10)
+
+  usuarios     Usuario[]
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Usuario {
+  id            Int           @id @default(autoincrement())
+  nombre        String
+  apellido      String
+  correo        String        @unique
+  password      String
+  estado        EstadoUsuario @default(ACTIVO)
+
+  rolId         Int
+  tipoUsuarioId Int
+
+  rol           Rol         @relation(fields: [rolId], references: [id])
+  tipoUsuario   TipoUsuario @relation(fields: [tipoUsuarioId], references: [id])
+
+  prestamos     Prestamo[]
+  reservas      Reserva[]
+  multas        Multa[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Autor {
+  id        Int     @id @default(autoincrement())
+  nombre    String
+
+  libros    Libro[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Editorial {
+  id        Int     @id @default(autoincrement())
+  nombre    String
+
+  libros    Libro[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Categoria {
+  id        Int     @id @default(autoincrement())
+  nombre    String  @unique
+
+  libros    Libro[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Libro {
+  id          Int     @id @default(autoincrement())
+  titulo      String
+  isbn        String? @unique
+  anio        Int?
+  cantidad    Int
+  disponibles Int
+
+  autorId     Int
+  editorialId Int
+  categoriaId Int
+
+  autor       Autor     @relation(fields: [autorId], references: [id])
+  editorial   Editorial @relation(fields: [editorialId], references: [id])
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
+
+  prestamos   Prestamo[]
+  reservas    Reserva[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DocumentoGarantia {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique
+  descripcion String?
+
+  prestamos   Prestamo[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Prestamo {
+  id                  Int            @id @default(autoincrement())
+  usuarioId           Int
+  libroId             Int
+  documentoGarantiaId Int?
+
+  fechaPrestamo       DateTime       @default(now())
+  fechaDevolucion     DateTime
+  estado              EstadoPrestamo @default(ACTIVO)
+
+  usuario             Usuario  @relation(fields: [usuarioId], references: [id])
+  libro               Libro    @relation(fields: [libroId], references: [id])
+  documentoGarantia   DocumentoGarantia? @relation(fields: [documentoGarantiaId], references: [id])
+
+  devolucion          Devolucion?
+  multas              Multa[]
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Devolucion {
+  id           Int      @id @default(autoincrement())
+  prestamoId   Int      @unique
+  fechaEntrega DateTime @default(now())
+  observacion  String?
+
+  prestamo     Prestamo @relation(fields: [prestamoId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Reserva {
+  id           Int           @id @default(autoincrement())
+  usuarioId    Int
+  libroId      Int
+  fechaReserva DateTime      @default(now())
+  estado       EstadoReserva @default(PENDIENTE)
+
+  usuario      Usuario @relation(fields: [usuarioId], references: [id])
+  libro        Libro   @relation(fields: [libroId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Multa {
+  id         Int        @id @default(autoincrement())
+  usuarioId  Int
+  prestamoId Int?
+  monto      Float
+  motivo     String
+  estadoPago EstadoPago @default(PENDIENTE)
+  fecha      DateTime   @default(now())
+
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id])
+  prestamo   Prestamo? @relation(fields: [prestamoId], references: [id])
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
